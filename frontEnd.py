@@ -12,14 +12,6 @@ from PyQt5.QtWidgets import QWidget
 
 
 
-
-
-
-
-
-
-
-
 #---------------------------------------
 #--------PyQt set up stuff--------------
 #---------------------------------------
@@ -29,15 +21,16 @@ app = QApplication(sys.argv)
 
 #Create root widget
 root = QWidget()
+root.setGeometry(300,200,300,200)
 
 #Adding title to window
-root.setWindowTitle('Geeks App')
+root.setWindowTitle('ECE 579 Final Project')
 
 #Place text
-root.move(60, 15)
+#root.move(60, 15)
 
 #Display text
-txt = QLabel('Welcome, Geek!', parent = root)
+txt = QLabel('Welcome, User!', parent = root)
 txt.move(60,15)
 
 
@@ -118,10 +111,14 @@ class Home:
         
     def render(self, root):
         #Renders self on PyQt
-        print("Rendering")
+        #print("Rendering")
         #Display text
-        title = QLabel('I am home 1', parent = root)
-        title.move(90,40) 
+        title = QLabel('I am home: ' + str(self.id), parent = root)
+        title.move(50,40+(self.id*20)) 
+        title.show()
+        
+        #Display the GUI elements that represent the status of the house
+        #signal_textbox = 
         
         
 
@@ -140,10 +137,22 @@ class Management_Unit:
 #----------Initialize Environment
 #---------------------------
 homeOne = Home(1)
-print("HI")
-homeOne.render(root)
+homeTwo = Home(2)
+homeThree = Home(3)
+homeFour = Home(4)
+homeFive = Home(5)
+
+#List of homes
+homes = []
+homes.append(homeOne)
+homes.append(homeTwo)
+homes.append(homeThree)
+homes.append(homeFour)
+homes.append(homeFive)
 
 
+for home in homes:
+    home.render(root)
 #----------------------------
 #---------PyQt Main Loop-----
 #----------------------------
