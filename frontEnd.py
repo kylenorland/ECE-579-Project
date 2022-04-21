@@ -4,11 +4,13 @@
 
 import sys
 import random
+from collections import deque
+import time
 
 #Import required stuff
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QLineEdit
 
 
 
@@ -21,7 +23,8 @@ app = QApplication(sys.argv)
 
 #Create root widget
 root = QWidget()
-root.setGeometry(300,200,300,200)
+root.setGeometry(300,200,500,500)
+root.resize(500, 500)
 
 #Adding title to window
 root.setWindowTitle('ECE 579 Final Project')
@@ -33,99 +36,172 @@ root.setWindowTitle('ECE 579 Final Project')
 txt = QLabel('Welcome, User!', parent = root)
 txt.move(60,15)
 
+#Step Counter
+step_counter_label = QLabel("Steps", parent = root)
+step_counter_label.move(50, 40)
+#step_counter_label.show()
+
+#Step Box
+step_counter_box = QLabel(str(5), parent = root)
+step_counter_box.move(100, 40)
+step_counter_box.resize(30,20)
+
 
 #-------------------------------------------
 #--------------Classes for Home Objects-----
 #Globals
 FULL = 3
 
-class Robot:
-    def __init__(self, id):
+class Home:
+    def __init__(self, id, parent, stand_type):
         self.id = id
-        self.position = 0      #-1, 0, 1
-        self.holding_flag = False
-        self.holding = []
+        self.parent = parent
+        self.on_stand = [{"type": "glass", "fullness": 4, "capacity": 4}]
+        self.full_bottle_shelf = []
+        self.empty_bottle_shelf = []
+        self.floor = []
+        self.water_column_fullness = []
+        self.water_column_occupied = True
+        self.new = True
+        self.ms_text = ""
         
-    def restack(self):
-        print("Restacking")
-        
-        
-class Bottle:
-    def __init__(self, type, capacity, fullness):
-        self.type = type  #Glass or Plastic
-        self.capacity = capacity   #4 or 6
-        self.fullness = fullness #Up to capacity
-        
-class Stand:
-    def __init__(self, type):
-        self.type = type #Chilled or normal
-        self.has_bottle = True
-        self.bottle = None
+        #Stand Info
+        self.stand_type = stand_type #Chilled or normal
         self.bottle_temperature = 30
         self.max_proper_temperature = 44
         self.min_proper_temperature = 40
         self.goal_temperature = 42
         self.on = True
         self.room_temperature = 70
-        self.leak_probability = 0.05
+        self.leak_probability = 0.3
         self.leaking = False
-    
+        self.need_replenish = False
+        self.daily_usage = 0.5
+        
+        #Robot Info
+        self.r_position = 0      #-1, 0, 1
+        self.r_holding_flag = False
+        self.r_holding = []
+        
+        
     def control_temperature(self):
-        if self.type == "chilled":
+        if self.stand_type == "chilled":
             if self.bottle_temperature > self.max_proper_temperature:
                 self.bottle_temperature -= 1
             if self.bottle_temperature < self.min_proper_temperature:
-                self.bottle_temperature += 1
+                self.bottle_temperature += 1  
 
+    def restack(self):
+        print("Restacking")
+        
+    #Properties
     def step(self):
-        #Simulates gradual change in bottle temp
+        #A function to step time forward
+        print("House: ", self.id, " stepping")
+        
+        #Reset some variables
+        self.ms_text = "Messages: "
+        
+        
+        #-------------Bottle Temperature-----------------
+        #Update bottle temperature
         if self.room_temperature > self.bottle_temperature:
             self.bottle_temperature += 0.5
         elif self.room_temperature < self.bottle_temperature:
             self.bottle_temperature -= 0.5
         
         #Run the thermostat
-        control_temperature()
+        self.control_temperature()
         
-        #If bottle empty send command to dispatch
+        
+        #------------Bottle Fullness---------------------
+        #Empty bottle a bit
+        if len(self.on_stand) > 0:
+            self.on_stand[0]["fullness"] -= self.daily_usage
+            #Catch zero
+            self.on_stand[0]["fullness"] = max(self.on_stand[0]["fullness"], 0)
+            
+            #Message if empty
+            if self.on_stand[0]["fullness"] < 0.25 and len(self.full_bottle_shelf) <= 1:
+                self.need_replenish = True
+                self.parent.message_queue.appendleft({"message":"Replenish", "house_id": self.id})
+                self.ms_text = self.ms_text + " replenish! "
         
         #Generate leak randomly, then if leaking, send to dispatch
-        seed(124323423)
-        if random() > self.leak_probability:
+        random.seed(124323423)
+        if random.random() < self.leak_probability:
             self.leaking = True
-            #Send message to dispatch   
-
-class Home:
-    def __init__(self, id):
-        self.id = id
-        self.full_bottle_shelf = []
-        self.empty_bottle_shelf = []
-        self.floor = []
-        self.water_column_fullness = []
-        self.water_column_occupied = True
-        
-    #Properties
-    def step(self):
-        #A function to step time forward
-        print("Time stepping")
+            self.parent.message_queue.appendleft({"message":"Alarm", "house_id": self.id}) 
+            self.ms_text = self.ms_text + " leaking! "
         
     def render(self, root):
-        #Renders self on PyQt
-        #print("Rendering")
-        #Display text
-        title = QLabel('I am home: ' + str(self.id), parent = root)
-        title.move(50,40+(self.id*20)) 
-        title.show()
+        if(self.new):
         
-        #Display the GUI elements that represent the status of the house
-        #signal_textbox = 
-        
+            base_x = 50
+            base_y = 40 + (self.id * 20)
+            
+            title = QLabel('I am home: ' + str(self.id), parent = root)
+            title.move(base_x, base_y) 
+            title.show()
+            self.new = False
+            
+            #Messages sent
+            self.messages_sent_label = messages_sent_label = QLabel("hi", parent = root)
+            self.messages_sent_label.move(base_x + 80, base_y)
+            self.messages_sent_label.show()
+            print("The message text is: ", self.ms_text)             
+
+        else:
+            print("Mid update: ", self.ms_text)
+            self.messages_sent_label.setText("yifosd")
+            self.messages_sent_label.adjustSize()
         
 
-class Management_Unit:
+class Dispatch:
     def __init__(self):
         self.id = 1
+        self.message_queue = deque([])
+        self.homes = []
+        self.num_employees = 1
+       
+    def step(self):
+        #Step children
+        print("Stepping")
+        for home in self.homes:
+            home.step()
+            
+        #Check messages
+        #Handle one house per employee per step
+        print("Checking Messages")
+        if len(self.message_queue) > 0:
+            for i in range(0, self.num_employees):
+                message = self.message_queue.pop()
+                print("Message")
+                print(message["message"])
+               
+                #Figure out which house messaged
+                for h in self.homes:
+                    if h.id == message['house_id']:
+                        #Not a copy
+                        house = h
+                        
+                    #Handle messages    
+                    if message["message"] == "replenish":
+                        house.need_replenish = False
+                    
+                    if message["message"] == "leaking":
+                        house.leaking = False
+                        
+    def render(self, root):
+        #Render all homes
+        for home in self.homes:
+            home.render(root)                
+                    
+                    
+                        
         
+
+            
     def run_TSP(self):
         print("TSP")
 
@@ -136,28 +212,36 @@ class Management_Unit:
 #---------------------------
 #----------Initialize Environment
 #---------------------------
-homeOne = Home(1)
-homeTwo = Home(2)
-homeThree = Home(3)
-homeFour = Home(4)
-homeFive = Home(5)
+#Create management unit
+dispatch = Dispatch()
+for i in range(1, 5):
+    dispatch.homes.append(Home(i, dispatch, "chilled"))
 
-#List of homes
-homes = []
-homes.append(homeOne)
-homes.append(homeTwo)
-homes.append(homeThree)
-homes.append(homeFour)
-homes.append(homeFive)
+#Initial
+dispatch.render(root)
 
-
-for home in homes:
-    home.render(root)
 #----------------------------
 #---------PyQt Main Loop-----
 #----------------------------
 #Show gui
 root.show()
+
+num_steps = 10
+
+for i in range(1, num_steps+1):
+    #Update the step count
+    step_counter_box.setText(str(i))
+    #step_counter_box.show()
+    
+    #Push step and render down to children
+    dispatch.step()
+    dispatch.render(root)
+    
+    #Process events
+    app.processEvents()
+    #Sleep for a bit
+    time.sleep(0.25)
+
 
 #Run main loop
 sys.exit(app.exec_())
