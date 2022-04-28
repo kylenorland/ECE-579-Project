@@ -7,6 +7,7 @@ import random
 from collections import deque
 import time
 
+
 #Import required stuff
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QLabel
@@ -23,8 +24,8 @@ app = QApplication(sys.argv)
 
 #Create root widget
 root = QWidget()
-root.setGeometry(300,200,500,500)
-root.resize(500, 500)
+root.setGeometry(300,200,1000,500)
+#root.resize(500, 500)
 
 #Adding title to window
 root.setWindowTitle('ECE 579 Final Project')
@@ -57,9 +58,9 @@ class Home:
         self.id = id
         self.parent = parent
         self.on_stand = [{"type": "glass", "fullness": 4, "capacity": 4}]
-        self.full_bottle_shelf = []
-        self.empty_bottle_shelf = []
-        self.floor = []
+        self.full_bottle_shelf = deque([])
+        self.empty_bottle_shelf = deque([])
+        self.floor = deque([])
         self.water_column_fullness = []
         self.water_column_occupied = True
         self.new = True
@@ -90,9 +91,59 @@ class Home:
                 self.bottle_temperature -= 1
             if self.bottle_temperature < self.min_proper_temperature:
                 self.bottle_temperature += 1  
-
+    
+    def print_stacks(self):
+        print("Full_stack")
+        for entry in self.full_stack: print(entry)
+        
+        print("Empty_stack")
+        for entry in self.empty_stack: print(entry)
+        
+        print("Floor")
+        for entry in self.floor: print(entry)
+    
+    
     def restack(self):
         print("Restacking")
+        #Restacking occurs when the delivery comes.
+        #Start state is bottle on stand, 1 on full stack, 2 on floor
+        #
+        #Pick Up From Full Stack
+        in_hand = self.full_stack.pop()
+        
+        #Put Down on empty stack
+        self.empty_stack.append(in_hand)
+        
+        #Pick up from floor
+        in_hand = self.floor.pop()
+        
+        #Put down on full_stack
+        self.full_stack.append(in_hand)
+        
+        #Pick up from floor
+        in_hand = self.floor.pop()
+        
+        #Put down on full stack
+        self.full_stack.append(in_hand)
+        
+        #Pick up from empty stack
+        in_hand = self.empty_stack.pop()
+        
+        #Put down on full stack
+        full_stack.append(in_hand)
+        
+        #Now fully ordered by freshness
+        
+        
+        
+    #Sub-Operations
+    def stack(self):
+        
+    def unstack(self):
+    
+    def put_down(self):
+    
+    def pick_up(self):
         
     #Properties
     def step(self):
@@ -146,16 +197,47 @@ class Home:
             self.new = False
             
             #Messages sent
-            self.messages_sent_label = messages_sent_label = QLabel("hi", parent = root)
-            self.messages_sent_label.move(base_x + 80, base_y)
+            self.messages_sent_label = QLabel("hi", parent = root)
+            self.messages_sent_label.move(base_x + 400, base_y)
             self.messages_sent_label.show()
-            print("The message text is: ", self.ms_text)             
+            print("The message text is: ", self.ms_text)   
+
+
+            #Fullness
+            self.fullness_label = QLabel("Fullness:", parent = root)
+            self.fullness_label.move(base_x + 80, base_y)
+            self.fullness_label.show()
+            
+            #Full Bottles
+            self.full_bottles_label = QLabel("Full Bottles:", parent = root)
+            self.full_bottles_label.move(base_x + 200, base_y)
+            self.full_bottles_label.show()
+            
+            #Empty Bottles
+            self.empty_bottles_label = QLabel("Empty Bottles:", parent = root)
+            self.empty_bottles_label.move(base_x + 300, base_y)
+            self.empty_bottles_label.show()
 
         else:
             print("Mid update: ", self.ms_text)
-            self.messages_sent_label.setText("yifosd")
+            
+            #Messages
+            self.messages_sent_label.setText(self.ms_text)
             self.messages_sent_label.adjustSize()
-        
+            
+            #Fullness
+            self.fullness_label.setText("Fullness: " + str(self.on_stand[0]["fullness"]) + " / " + str(self.on_stand[0]["capacity"]))
+            self.fullness_label.adjustSize()
+            
+            #Full Bottles
+            self.full_bottles_label.setText("Full Bottles: " + str(len(self.full_bottle_shelf)))
+            self.full_bottles_label.adjustSize()
+            
+            #Empty Stack
+            self.empty_bottles_label.setText("Empty Bottles: " + str(len(self.empty_bottle_shelf)))
+            self.empty_bottles_label.adjustSize()
+            
+            
 
 class Dispatch:
     def __init__(self):
