@@ -11,41 +11,84 @@ import time
 #Import required stuff
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QWidget, QLineEdit
-
+from PyQt5.QtWidgets import QWidget, QLineEdit, QPushButton
+from PyQt5.QtCore import pyqtSlot
 
 
 #---------------------------------------
 #--------PyQt set up stuff--------------
 #---------------------------------------
+class App(QWidget):
 
-#Create instance of QApplication
-app = QApplication(sys.argv)
+    def __init__(self):
+        super().__init__()
+        self.title = 'ECE 579 Final Project'
+        self.left = 300
+        self.top = 200
+        self.width = 1000
+        self.height = 500
+        self.initUI()
+    
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+        
+        #Buttons
+        
+        
+        self.button = QPushButton('PyQt5 button', self)
+        self.button.setToolTip('This is an example button')
+        self.button.move(100,70)
+        self.button.clicked.connect(self.on_click)
+        
+        #Display text
+        self.txt = QLabel('Welcome, User!', self)
+        self.txt.move(60,15)
 
-#Create root widget
-root = QWidget()
-root.setGeometry(300,200,1000,500)
-#root.resize(500, 500)
+        #Step Counter
+        self.step_counter_label = QLabel("Steps", self)
+        self.step_counter_label.move(50, 40)
+        #step_counter_label.show()
 
-#Adding title to window
-root.setWindowTitle('ECE 579 Final Project')
+        #Step Box
+        self.step_counter_box = QLabel(str(5), self)
+        self.step_counter_box.move(100, 40)
+        self.step_counter_box.resize(30,20)
 
-#Place text
-#root.move(60, 15)
+        #One Step Button
+        self.one_step_button = QPushButton('One Step', self)
+        self.one_step_button.move(250, 20)
+        self.one_step_button.clicked.connect(lambda: self.run_sim(1))
 
-#Display text
-txt = QLabel('Welcome, User!', parent = root)
-txt.move(60,15)
-
-#Step Counter
-step_counter_label = QLabel("Steps", parent = root)
-step_counter_label.move(50, 40)
-#step_counter_label.show()
-
-#Step Box
-step_counter_box = QLabel(str(5), parent = root)
-step_counter_box.move(100, 40)
-step_counter_box.resize(30,20)
+        #Step 10 at a time.
+        self.multi_step_button = QPushButton('Multi Step', self)
+        self.multi_step_button.move(350, 20)
+        self.multi_step_button.clicked.connect(lambda: self.run_sim(10))
+        
+        
+        self.show()
+        
+        
+    @pyqtSlot()
+    def on_click(self):
+        print('PyQt5 button click')
+        
+    @pyqtSlot()
+    def run_sim(self, num_iter):
+        print(num_iter)
+        for i in range(0, num_iter):
+            #Update the step count
+            self.step_counter_box.setText(str(i))
+            #step_counter_box.show()
+            
+            #Push step and render down to children
+            dispatch.step()
+            dispatch.render(root)
+            
+            #Process events
+            #app.processEvents()
+            self.processEvents()
+            #Sleep for a bit
 
 
 #-------------------------------------------
@@ -133,17 +176,6 @@ class Home:
         full_stack.append(in_hand)
         
         #Now fully ordered by freshness
-        
-        
-        
-    #Sub-Operations
-    def stack(self):
-        
-    def unstack(self):
-    
-    def put_down(self):
-    
-    def pick_up(self):
         
     #Properties
     def step(self):
@@ -279,54 +311,57 @@ class Dispatch:
         for home in self.homes:
             home.render(root)                
                     
-                    
-                        
-        
-
             
     def run_TSP(self):
         print("TSP")
 
 
 
-
-
-#---------------------------
-#----------Initialize Environment
-#---------------------------
-#Create management unit
-dispatch = Dispatch()
-for i in range(1, 5):
-    dispatch.homes.append(Home(i, dispatch, "chilled"))
-
-#Initial
-dispatch.render(root)
-
-#----------------------------
-#---------PyQt Main Loop-----
-#----------------------------
-#Show gui
-root.show()
-
-num_steps = 10
-
-for i in range(1, num_steps+1):
-    #Update the step count
-    step_counter_box.setText(str(i))
-    #step_counter_box.show()
-    
-    #Push step and render down to children
-    dispatch.step()
-    dispatch.render(root)
-    
-    #Process events
-    app.processEvents()
-    #Sleep for a bit
-    time.sleep(0.25)
-
-
 #Run main loop
-sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    #--------------------------------------------------
+    #----------Tkinter Initial Interface for TSP-------
+    #--------------------------------------------------
+    
+    '''
+    #Tkinter window for the TSP
+    import tkinter as tk
+    tk_root = tk.Tk()
+    tk_root.title("TSP Problem")
+    tk_root.mainloop()
+    '''
+    #----------Initialize Environment
+    #---------------------------
+    #Create management unit
+    dispatch = Dispatch()
+    for i in range(1, 5):
+        dispatch.homes.append(Home(i, dispatch, "chilled"))
+
+    #Initial
+    dispatch.render(root)
+
+    
+    #Create instance of QApplication
+    app = QApplication(sys.argv)
+    ex = App()
+    sys.exit(app.exec_())
+    
+    #Check that variables got entered
+    #----------------------------
+    #---------PyQt Main Loop-----
+    #----------------------------
+    #Show gui
+    root.show()
+
+    num_steps = 10
+
+    @pyqtSlot()
+    def one_click():
+        print("one_click")
+
+    #def multi_click():
+
 
 
 
