@@ -4,8 +4,12 @@
 
 import sys
 import random
+random.seed(124323423)
 from collections import deque
 import time
+
+#Import tsp
+import tsp
 
 
 #Import required stuff
@@ -27,19 +31,13 @@ class App(QWidget):
         self.top = 200
         self.width = 1000
         self.height = 500
+        self.num_steps = 0
         self.initUI()
     
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
         
-        #Buttons
-        
-        
-        self.button = QPushButton('PyQt5 button', self)
-        self.button.setToolTip('This is an example button')
-        self.button.move(100,70)
-        self.button.clicked.connect(self.on_click)
         
         #Display text
         self.txt = QLabel('Welcome, User!', self)
@@ -51,45 +49,49 @@ class App(QWidget):
         #step_counter_label.show()
 
         #Step Box
-        self.step_counter_box = QLabel(str(5), self)
+        self.step_counter_box = QLabel(str(0), self)
         self.step_counter_box.move(100, 40)
         self.step_counter_box.resize(30,20)
 
+
+        #Run the TSP
+        self.tsp_button = QPushButton('Run TSP', self)
+        self.tsp_button.move(250, 20)
+        self.tsp_button.clicked.connect(lambda: self.run_tsp())
+        
         #One Step Button
         self.one_step_button = QPushButton('One Step', self)
-        self.one_step_button.move(250, 20)
+        self.one_step_button.move(350, 20)
         self.one_step_button.clicked.connect(lambda: self.run_sim(1))
 
         #Step 10 at a time.
         self.multi_step_button = QPushButton('Multi Step', self)
-        self.multi_step_button.move(350, 20)
+        self.multi_step_button.move(450, 20)
         self.multi_step_button.clicked.connect(lambda: self.run_sim(10))
+        
+
         
         
         self.show()
-        
-        
-    @pyqtSlot()
-    def on_click(self):
-        print('PyQt5 button click')
         
     @pyqtSlot()
     def run_sim(self, num_iter):
         print(num_iter)
         for i in range(0, num_iter):
             #Update the step count
-            self.step_counter_box.setText(str(i))
-            #step_counter_box.show()
+            self.num_steps += 1
+            self.step_counter_box.setText(str(self.num_steps))
+            self.step_counter_box.adjustSize()
+            self.step_counter_box.show()
             
             #Push step and render down to children
             dispatch.step()
-            dispatch.render(root)
-            
-            #Process events
-            #app.processEvents()
-            self.processEvents()
-            #Sleep for a bit
-
+            dispatch.render(ex)
+    
+    @pyqtSlot()    
+    def run_tsp(self):
+        print("Running TSP")
+        tsp.run_tsp_algorithm()
 
 #-------------------------------------------
 #--------------Classes for Home Objects-----
@@ -107,7 +109,13 @@ class Home:
         self.water_column_fullness = []
         self.water_column_occupied = True
         self.new = True
-        self.ms_text = ""
+        self.ms_text = "Messages: "
+        self.bottle_types = ["glass", "plastic"]
+        self.bottle_capacities = [4, 6]
+        
+        #Perform initial delivery (TSP has already been solved)
+        self.initialDelivery()
+        
         
         #Stand Info
         self.stand_type = stand_type #Chilled or normal
@@ -126,6 +134,23 @@ class Home:
         self.r_position = 0      #-1, 0, 1
         self.r_holding_flag = False
         self.r_holding = []
+    
+    def initialDelivery(self):
+        for i in range(0,3):
+            type = random.choice(self.bottle_types)
+            capacity = random.choice(self.bottle_capacities)
+            self.full_bottle_shelf.appendleft({"type": type , "fullness": capacity, "capacity": capacity})
+        
+    def replenish(self):
+        print("Replenishing house:", str(self.id))
+        #Delete all bottles from the empty_bottles_stack
+        self.empty_bottle_shelf = deque([])
+        
+        #Add two bottles to the floor
+        for i in range(0,2):
+            type = random.choice(self.bottle_types)
+            capacity = random.choice(self.bottle_capacities)
+            self.floor.appendleft({"type": type , "fullness": capacity, "capacity": capacity})
         
         
     def control_temperature(self):
@@ -151,31 +176,55 @@ class Home:
         #Restacking occurs when the delivery comes.
         #Start state is bottle on stand, 1 on full stack, 2 on floor
         #
-        #Pick Up From Full Stack
-        in_hand = self.full_stack.pop()
         
-        #Put Down on empty stack
-        self.empty_stack.append(in_hand)
+        if len(self.full_bottle_shelf) > 0:
+            #Pick Up From Full Stack
+            in_hand = self.full_bottle_shelf.pop()
+            
+            #Put Down on empty stack
+            self.empty_bottle_shelf.append(in_hand)
+        #else:
+            #print("Nothing on full bottle shelf")
         
         #Pick up from floor
         in_hand = self.floor.pop()
         
         #Put down on full_stack
-        self.full_stack.append(in_hand)
+        self.full_bottle_shelf.append(in_hand)
         
         #Pick up from floor
         in_hand = self.floor.pop()
         
         #Put down on full stack
-        self.full_stack.append(in_hand)
-        
-        #Pick up from empty stack
-        in_hand = self.empty_stack.pop()
-        
-        #Put down on full stack
-        full_stack.append(in_hand)
+        self.full_bottle_shelf.append(in_hand)
+        if len(self.empty_bottle_shelf) > 0:
+            #Pick up from empty stack
+            in_hand = self.empty_bottle_shelf.pop()
+            
+            #Put down on full stack
+            self.full_bottle_shelf.append(in_hand)
+        #else:
+            #print("Empty Bottle Shelf is empty")
         
         #Now fully ordered by freshness
+        
+    def replace_bottle(self):
+        print("Replacing")
+        
+        if len(self.full_bottle_shelf) >= 1:
+            #Pick up from stand
+            in_hand = self.on_stand.pop()
+            
+            #Put Down on empty stack
+            self.empty_bottle_shelf.append(in_hand)
+            
+            #Pick Up From Full Stack
+            in_hand = self.full_bottle_shelf.pop() 
+            
+            #Put down on stand
+            self.on_stand.append(in_hand)
+        else:
+            self.ms_text = self.ms_text + " empty!"
         
     #Properties
     def step(self):
@@ -198,6 +247,8 @@ class Home:
         
         
         #------------Bottle Fullness---------------------
+        pre_fullness = self.on_stand[0]["fullness"]
+        
         #Empty bottle a bit
         if len(self.on_stand) > 0:
             self.on_stand[0]["fullness"] -= self.daily_usage
@@ -207,15 +258,29 @@ class Home:
             #Message if empty
             if self.on_stand[0]["fullness"] < 0.25 and len(self.full_bottle_shelf) <= 1:
                 self.need_replenish = True
-                self.parent.message_queue.appendleft({"message":"Replenish", "house_id": self.id})
+                self.parent.message_queue.appendleft({"message":"replenish", "house_id": self.id})
                 self.ms_text = self.ms_text + " replenish! "
         
+        
         #Generate leak randomly, then if leaking, send to dispatch
-        random.seed(124323423)
-        if random.random() < self.leak_probability:
+        random_leak_number = random.random()
+        if random_leak_number < self.leak_probability:
+            self.on_stand[0]["fullness"] -= (0.20 * self.daily_usage)
+        
+        post_fullness = self.on_stand[0]["fullness"]
+        
+        
+        #If the leak has made the house use more than its usual daily usage, trigger the leaking signal.
+        if pre_fullness - post_fullness > self.daily_usage:
             self.leaking = True
-            self.parent.message_queue.appendleft({"message":"Alarm", "house_id": self.id}) 
+            self.parent.message_queue.appendleft({"message":"leaking", "house_id": self.id}) 
             self.ms_text = self.ms_text + " leaking! "
+        
+        
+        #Replace bottle if empty
+        if self.on_stand[0]["fullness"] <= 0.0:
+            self.replace_bottle()
+        
         
     def render(self, root):
         if(self.new):
@@ -223,42 +288,45 @@ class Home:
             base_x = 50
             base_y = 40 + (self.id * 20)
             
-            title = QLabel('I am home: ' + str(self.id), parent = root)
-            title.move(base_x, base_y) 
-            title.show()
+            
+            self.title = QLabel('I am home: ' + str(self.id), parent = ex)
+            self.title.move(base_x, base_y) 
+            self.title.show()
             self.new = False
             
-            #Messages sent
-            self.messages_sent_label = QLabel("hi", parent = root)
-            self.messages_sent_label.move(base_x + 400, base_y)
-            self.messages_sent_label.show()
-            print("The message text is: ", self.ms_text)   
-
-
             #Fullness
-            self.fullness_label = QLabel("Fullness:", parent = root)
-            self.fullness_label.move(base_x + 80, base_y)
+            self.fullness_label = QLabel("Fullness:", parent = ex)
+            self.fullness_label.move(base_x + 100, base_y)
             self.fullness_label.show()
             
             #Full Bottles
-            self.full_bottles_label = QLabel("Full Bottles:", parent = root)
+            self.full_bottles_label = QLabel("Full Bottles:", parent = ex)
             self.full_bottles_label.move(base_x + 200, base_y)
             self.full_bottles_label.show()
             
             #Empty Bottles
-            self.empty_bottles_label = QLabel("Empty Bottles:", parent = root)
+            self.empty_bottles_label = QLabel("Empty Bottles:", parent = ex)
             self.empty_bottles_label.move(base_x + 300, base_y)
             self.empty_bottles_label.show()
+            
+            #Water Temperature
+            self.bottle_temperature_label = QLabel("Bottle Temperature: ", parent = ex)
+            self.bottle_temperature_label.move(base_x + 425, base_y)
+            self.bottle_temperature_label.show()
+            
+            #Messages sent
+            self.messages_sent_label = QLabel(self.ms_text, parent = ex)
+            self.messages_sent_label.move(base_x + 600, base_y)
+            self.messages_sent_label.show()
+            print("The message text is: ", self.ms_text) 
 
         else:
             print("Mid update: ", self.ms_text)
             
-            #Messages
-            self.messages_sent_label.setText(self.ms_text)
-            self.messages_sent_label.adjustSize()
+
             
             #Fullness
-            self.fullness_label.setText("Fullness: " + str(self.on_stand[0]["fullness"]) + " / " + str(self.on_stand[0]["capacity"]))
+            self.fullness_label.setText("Fullness: " + str(round(self.on_stand[0]["fullness"], 2)) + " / " + str(self.on_stand[0]["capacity"]))
             self.fullness_label.adjustSize()
             
             #Full Bottles
@@ -269,6 +337,13 @@ class Home:
             self.empty_bottles_label.setText("Empty Bottles: " + str(len(self.empty_bottle_shelf)))
             self.empty_bottles_label.adjustSize()
             
+            #Messages
+            self.bottle_temperature_label.setText("Bottle Temperature: " + str(self.bottle_temperature))
+            self.bottle_temperature_label.adjustSize()
+            
+            #Messages
+            self.messages_sent_label.setText(self.ms_text)
+            self.messages_sent_label.adjustSize()
             
 
 class Dispatch:
@@ -276,7 +351,7 @@ class Dispatch:
         self.id = 1
         self.message_queue = deque([])
         self.homes = []
-        self.num_employees = 1
+        self.num_employees = 8
        
     def step(self):
         #Step children
@@ -289,28 +364,31 @@ class Dispatch:
         print("Checking Messages")
         if len(self.message_queue) > 0:
             for i in range(0, self.num_employees):
-                message = self.message_queue.pop()
-                print("Message")
-                print(message["message"])
-               
-                #Figure out which house messaged
-                for h in self.homes:
-                    if h.id == message['house_id']:
-                        #Not a copy
-                        house = h
-                        
-                    #Handle messages    
-                    if message["message"] == "replenish":
-                        house.need_replenish = False
-                    
-                    if message["message"] == "leaking":
-                        house.leaking = False
+                if len(self.message_queue) > 0:
+                    message = self.message_queue.pop()
+                    print("Message:" +  str(message))
+                   
+                    #Figure out which house messaged
+                    for h in self.homes:
+                        if str(h.id) == str(message['house_id']):
+                            #Not a copy
+                            house = h
+                            
+                            #Handle messages    
+                            if message["message"] == "replenish":
+                                print("Working with house: ", house.id)
+                                house.need_replenish = False
+                                house.replenish()
+                                house.restack()
+                            
+                            if message["message"] == "leaking":
+                                print("one is leaking")
+                                house.leaking = False
                         
     def render(self, root):
         #Render all homes
         for home in self.homes:
-            home.render(root)                
-                    
+            home.render(root)           
             
     def run_TSP(self):
         print("TSP")
@@ -333,35 +411,21 @@ if __name__ == "__main__":
     '''
     #----------Initialize Environment
     #---------------------------
-    #Create management unit
+
+     #Create dispatch unit and houses
     dispatch = Dispatch()
     for i in range(1, 5):
-        dispatch.homes.append(Home(i, dispatch, "chilled"))
+        dispatch.homes.append(Home(i, dispatch, "chilled")) 
+        
+    #Create instance of QApplication and other objects
+    app = QApplication(sys.argv)
+    ex = App()    
+
 
     #Initial
-    dispatch.render(root)
+    dispatch.render(ex)
 
-    
-    #Create instance of QApplication
-    app = QApplication(sys.argv)
-    ex = App()
     sys.exit(app.exec_())
-    
-    #Check that variables got entered
-    #----------------------------
-    #---------PyQt Main Loop-----
-    #----------------------------
-    #Show gui
-    root.show()
-
-    num_steps = 10
-
-    @pyqtSlot()
-    def one_click():
-        print("one_click")
-
-    #def multi_click():
-
 
 
 
