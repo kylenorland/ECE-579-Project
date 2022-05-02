@@ -134,6 +134,7 @@ class Home:
         self.r_position = 0      #-1, 0, 1
         self.r_holding_flag = False
         self.r_holding = []
+        self.robot_type = "fixed"
     
     def initialDelivery(self):
         for i in range(0,3):
@@ -211,7 +212,7 @@ class Home:
     def replace_bottle(self):
         print("Replacing")
         
-        if len(self.full_bottle_shelf) >= 1:
+        if len(self.full_bottle_shelf) >= 1 and len(self.empty_bottle_shelf) <= 2:
             #Pick up from stand
             in_hand = self.on_stand.pop()
             
@@ -223,9 +224,11 @@ class Home:
             
             #Put down on stand
             self.on_stand.append(in_hand)
-        else:
+        elif len(self.full_bottle_shelf) < 1:
             self.ms_text = self.ms_text + " empty!"
-        
+        else:
+            self.ms_text = self.ms_text + " empty_stack full!"
+            
     #Properties
     def step(self):
         #A function to step time forward
