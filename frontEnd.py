@@ -232,7 +232,7 @@ class Home:
     #Properties
     def step(self):
         #A function to step time forward
-        print("House: ", self.id, " stepping")
+        #print("House: ", self.id, " stepping")
         
         #Reset some variables
         self.ms_text = "Messages: "
@@ -276,7 +276,7 @@ class Home:
         #If the leak has made the house use more than its usual daily usage, trigger the leaking signal.
         if pre_fullness - post_fullness > self.daily_usage:
             self.leaking = True
-            self.parent.message_queue.appendleft({"message":"leaking", "house_id": self.id}) 
+            self.parent.message_queue.appendleft({"message":"alarm", "house_id": self.id}) 
             self.ms_text = self.ms_text + " leaking! "
         
         
@@ -384,7 +384,7 @@ class Dispatch:
                                 house.replenish()
                                 house.restack()
                             
-                            if message["message"] == "leaking":
+                            if message["message"] == "alarm":
                                 print("one is leaking")
                                 house.leaking = False
                         
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 
      #Create dispatch unit and houses
     dispatch = Dispatch()
-    for i in range(1, 5):
+    for i in range(1, 6):
         dispatch.homes.append(Home(i, dispatch, "chilled")) 
         
     #Create instance of QApplication and other objects
